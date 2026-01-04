@@ -1,0 +1,130 @@
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 1.5rem 0;
+    transition: all var(--transition-normal);
+    background: transparent;
+}
+
+.navbar.scrolled {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 1rem 0;
+    box-shadow: var(--shadow-md);
+}
+
+.navbar-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    flex-direction: column;
+    font-weight: 700;
+    transition: var(--transition-fast);
+}
+
+.logo:hover {
+    transform: translateY(-2px);
+}
+
+.logo-text {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+}
+
+.logo-subtext {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-gray);
+}
+
+.nav-links {
+    display: flex;
+    gap: 2.5rem;
+    align-items: center;
+}
+
+.nav-links a {
+    position: relative;
+    font-weight: 500;
+    color: var(--text-light);
+    transition: var(--transition-fast);
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--gradient-gold);
+    transition: var(--transition-normal);
+}
+
+.nav-links a:hover {
+    color: var(--accent-gold);
+}
+
+.nav-links a:hover::after {
+    width: 100%;
+}
+
+.mobile-menu-btn {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.mobile-menu-btn span {
+    width: 25px;
+    height: 3px;
+    background: var(--accent-gold);
+    border-radius: 2px;
+    transition: var(--transition-fast);
+}
+
+@media (max-width: 768px) {
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    .nav-links {
+        position: fixed;
+        top: 70px;
+        right: -100%;
+        flex-direction: column;
+        background: rgba(15, 23, 42, 0.98);
+        backdrop-filter: blur(10px);
+        padding: 2rem;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        transition: var(--transition-normal);
+        gap: 1.5rem;
+        min-width: 200px;
+    }
+
+    .nav-links.active {
+        right: var(--spacing-md);
+    }
+
+    .nav-links a::after {
+        display: none;
+    }
+}

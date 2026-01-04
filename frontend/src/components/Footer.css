@@ -1,0 +1,129 @@
+.footer {
+    background: var(--primary-dark);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: var(--spacing-2xl) 0 var(--spacing-lg);
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
+}
+
+.footer-section h4 {
+    color: var(--accent-gold);
+    margin-bottom: var(--spacing-md);
+    font-size: 1.125rem;
+}
+
+.footer-logo {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--spacing-md);
+}
+
+.footer-logo .logo-text {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+}
+
+.footer-logo .logo-subtext {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-gray);
+}
+
+.footer-description {
+    color: var(--text-gray);
+    line-height: 1.6;
+}
+
+.footer-links {
+    list-style: none;
+}
+
+.footer-links li {
+    margin-bottom: var(--spacing-sm);
+}
+
+.footer-links a,
+.footer-links li {
+    color: var(--text-gray);
+    transition: var(--transition-fast);
+}
+
+.footer-links a:hover {
+    color: var(--accent-gold);
+    transform: translateX(5px);
+    display: inline-block;
+}
+
+.footer-contact {
+    list-style: none;
+}
+
+.footer-contact li {
+    color: var(--text-gray);
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.6;
+}
+
+.footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.footer-bottom p {
+    color: var(--text-gray);
+    margin: 0;
+}
+
+.footer-social {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.footer-social a {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all var(--transition-normal);
+}
+
+.footer-social a:hover {
+    background: var(--gradient-gold);
+    color: var(--primary-dark);
+    transform: translateY(-3px);
+}
+
+@media (max-width: 768px) {
+    .footer-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+    }
+}

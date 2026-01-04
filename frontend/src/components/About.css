@@ -1,0 +1,182 @@
+.about {
+    background: var(--primary-dark);
+}
+
+.about.full-page {
+    min-height: 100vh;
+    padding-top: 8rem;
+}
+
+.about-content {
+    align-items: center;
+}
+
+.about-text h3 {
+    color: var(--accent-gold);
+}
+
+.about-text p {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+}
+
+.about-image {
+    display: flex;
+    justify-content: center;
+}
+
+.image-wrapper {
+    width: 100%;
+    max-width: 500px;
+    aspect-ratio: 4/3;
+    padding: var(--spacing-md);
+}
+
+.placeholder-about-image {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--accent-gold) 100%);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.25rem;
+    color: var(--text-light);
+}
+
+.services h3,
+.values h3 {
+    font-size: 2rem;
+}
+
+.service-card {
+    text-align: center;
+    transition: all var(--transition-normal);
+}
+
+.service-card:hover {
+    border-color: var(--accent-gold);
+}
+
+.service-icon {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-md);
+    display: block;
+}
+
+.service-card h4 {
+    color: var(--text-light);
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.25rem;
+}
+
+.value-item {
+    padding: var(--spacing-xl);
+    transition: all var(--transition-normal);
+}
+
+.value-item:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.value-item h4 {
+    color: var(--accent-gold);
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.5rem;
+}
+
+.value-item p {
+    font-size: 1.0625rem;
+}
+
+/* Vision and Mission Section */
+.vision-mission h3 {
+    font-size: 2rem;
+}
+
+.vm-card {
+    padding: var(--spacing-xl);
+    transition: all var(--transition-normal);
+}
+
+.vm-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.vm-card h3 {
+    color: var(--accent-gold);
+    margin-bottom: var(--spacing-md);
+    font-size: 1.75rem;
+}
+
+.vision-text {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-light);
+    font-style: italic;
+    margin-bottom: var(--spacing-md);
+}
+
+.vm-card p {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+}
+
+/* Leadership Section */
+.leadership h3 {
+    font-size: 2rem;
+}
+
+.leader-card {
+    padding: var(--spacing-xl);
+    transition: all var(--transition-normal);
+    text-align: center;
+}
+
+.leader-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.leader-card h4 {
+    color: var(--accent-gold);
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-xs);
+}
+
+.leader-title {
+    color: var(--text-light) !important;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: var(--spacing-md);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.leader-card p {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    text-align: left;
+}
+
+@media (max-width: 768px) {
+    .about.full-page {
+        padding-top: 6rem;
+    }
+
+    .about-content {
+        grid-template-columns: 1fr;
+    }
+
+    .about-text {
+        order: 2;
+    }
+
+    .about-image {
+        order: 1;
+        margin-bottom: var(--spacing-lg);
+    }
+}

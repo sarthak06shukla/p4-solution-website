@@ -1,0 +1,108 @@
+.contact {
+    background: linear-gradient(180deg, var(--primary-dark) 0%, var(--bg-dark) 100%);
+}
+
+.contact.full-page {
+    min-height: 100vh;
+    padding-top: 8rem;
+}
+
+.contact-content {
+    gap: var(--spacing-2xl);
+}
+
+.contact-info h3 {
+    color: var(--accent-gold);
+    font-size: 1.75rem;
+}
+
+.info-item {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+}
+
+.info-icon {
+    font-size: 2rem;
+    min-width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gradient-gold);
+    border-radius: var(--radius-sm);
+}
+
+.info-item h4 {
+    color: var(--text-light);
+    margin-bottom: var(--spacing-xs);
+    font-size: 1.125rem;
+}
+
+.info-item p {
+    color: var(--text-gray);
+    line-height: 1.6;
+}
+
+.social-links h4 {
+    color: var(--text-light);
+}
+
+.social-icons {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.social-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    transition: all var(--transition-normal);
+}
+
+.social-icon:hover {
+    background: var(--gradient-gold);
+    color: var(--primary-dark);
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md);
+}
+
+.contact-form {
+    padding: var(--spacing-xl);
+}
+
+.success-message {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+    font-weight: 600;
+    animation: slideIn 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .contact.full-page {
+        padding-top: 6rem;
+    }
+
+    .contact-content {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-info {
+        order: 2;
+        margin-top: var(--spacing-xl);
+    }
+
+    .contact-form-wrapper {
+        order: 1;
+    }
+}
