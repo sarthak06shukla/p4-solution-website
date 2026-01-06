@@ -63,7 +63,7 @@ const uploadToCloudinary = (buffer, filename) => {
 router.get('/', (req, res) => {
     const db = req.app.locals.db;
 
-    db.all('SELECT * FROM projects ORDER BY createdAt DESC', [], (err, rows) => {
+    db.all('SELECT * FROM projects ORDER BY createdat DESC', [], (err, rows) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }

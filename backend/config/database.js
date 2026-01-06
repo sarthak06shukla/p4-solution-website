@@ -83,17 +83,13 @@ class Database {
     async initialize() {
         if (this.isProduction) {
             // PostgreSQL initialization
-            // Drop existing table to fix column name issues
-            await this.db.query('DROP TABLE IF EXISTS projects CASCADE');
-
             const createTableSQL = `
-                CREATE TABLE projects (
+                CREATE TABLE IF NOT EXISTS projects (
                     id SERIAL PRIMARY KEY,
                     title VARCHAR(255) NOT NULL,
                     description TEXT,
                     category VARCHAR(100),
                     location VARCHAR(255),
-                    completiondate VARCHAR(100),
                     clientname VARCHAR(255),
                     images TEXT,
                     createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
