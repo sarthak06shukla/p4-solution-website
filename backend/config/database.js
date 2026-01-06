@@ -90,11 +90,11 @@ class Database {
                     description TEXT,
                     category VARCHAR(100),
                     location VARCHAR(255),
-                    "completionDate" VARCHAR(100),
-                    "clientName" VARCHAR(255),
+                    completiondate VARCHAR(100),
+                    clientname VARCHAR(255),
                     images TEXT,
-                    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updatedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `;
             await this.db.query(createTableSQL);
