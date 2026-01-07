@@ -1,41 +1,64 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
 const { authenticateToken } = require('./auth');
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Configure multer to use memory storage
 const upload = multer({
-    storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|webp/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed!'));
-        }
-    }
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
 });
+
+// Helper function to upload to Cloudinary
+const uploadToCloudinary = (buffer, filename) => {
+    return new Promise((resolve, reject) => {
+        const isVideo = /\.(mp4|mov|avi|webm)$/i.test(filename);
+
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'p4-solution-projects',
+                resource_type: isVideo ? 'video' : 'image',
+                timeout: 300000, // 5 minutes timeout for videos
+                chunk_size: 6000000, // 6MB chunks
+                eager: isVideo ? [{ quality: 'auto' }] : undefined,
+                eager_async: isVideo
+            },
+            (error, result) => {
+                if (error) {
+                    console.error('Cloudinary upload error:', error);
+                    reject(error);
+                } else {
+                    console.log('Upload successful:', result.secure_url);
+                    resolve(result.secure_url);
+                }
+            }
+        );
+
+        uploadStream.on('error', (streamError) => {
+            console.error('Upload stream error:', streamError);
+            reject(streamError);
+        });
+
+        const readStream = streamifier.createReadStream(buffer);
+
+        readStream.on('error', (readError) => {
+            console.error('Read stream error:', readError);
+            reject(readError);
+        });
+
+        readStream.pipe(uploadStream);
+    });
+};
 
 // GET all projects
 router.get('/', (req, res) => {
@@ -46,7 +69,6 @@ router.get('/', (req, res) => {
             return res.status(500).json({ error: err.message });
         }
 
-        // Parse images JSON string to array
         const projects = rows.map(row => ({
             ...row,
             images: row.images ? JSON.parse(row.images) : []
@@ -131,11 +153,9 @@ router.put('/:id', authenticateToken, upload.array('images', 10), async (req, re
     const { title, description, category, location, completionDate, clientName, existingImages } = req.body;
 
     try {
-        // Combine existing images with new uploads
         let images = existingImages ? JSON.parse(existingImages) : [];
 
         if (req.files && req.files.length > 0) {
-            // Upload new files to Cloudinary
             const uploadPromises = req.files.map(file =>
                 uploadToCloudinary(file.buffer, file.originalname)
             );
@@ -144,11 +164,11 @@ router.put('/:id', authenticateToken, upload.array('images', 10), async (req, re
         }
 
         const query = `
-        UPDATE projects 
-        SET title = ?, description = ?, category = ?, location = ?, 
-            completiondate = ?, clientname = ?, images = ?, updatedat = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `;
+            UPDATE projects 
+            SET title = ?, description = ?, category = ?, location = ?, 
+                completiondate = ?, clientname = ?, images = ?, updatedat = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `;
 
         db.run(
             query,
@@ -181,11 +201,11 @@ router.put('/:id', authenticateToken, upload.array('images', 10), async (req, re
 });
 
 // DELETE project (protected)
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
     const db = req.app.locals.db;
 
-    // First get the project to delete associated images
-    db.get('SELECT images FROM projects WHERE id = ?', [req.params.id], (err, row) => {
+    // Get project to delete Cloudinary images
+    db.get('SELECT images FROM projects WHERE id = ?', [req.params.id], async (err, row) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
@@ -194,21 +214,23 @@ router.delete('/:id', authenticateToken, (req, res) => {
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        // Delete the project
-        db.run('DELETE FROM projects WHERE id = ?', [req.params.id], function (err) {
+        // Delete from database
+        db.run('DELETE FROM projects WHERE id = ?', [req.params.id], async function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
 
-            // Delete associated image files
+            // Delete from Cloudinary
             if (row.images) {
-                const images = JSON.parse(row.images);
-                images.forEach(imagePath => {
-                    const fullPath = path.join(__dirname, '..', imagePath);
-                    if (fs.existsSync(fullPath)) {
-                        fs.unlinkSync(fullPath);
+                try {
+                    const images = JSON.parse(row.images);
+                    for (const imageUrl of images) {
+                        const publicId = imageUrl.split('/').slice(-2).join('/').split('.')[0];
+                        await cloudinary.uploader.destroy(`p4-solution-projects/${publicId}`);
                     }
-                });
+                } catch (deleteError) {
+                    console.error('Cloudinary delete error:', deleteError);
+                }
             }
 
             res.json({ message: 'Project deleted successfully' });
