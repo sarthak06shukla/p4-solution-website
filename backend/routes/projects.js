@@ -28,8 +28,10 @@ const uploadToCloudinary = (buffer, filename) => {
             {
                 folder: 'p4-solution-projects',
                 resource_type: isVideo ? 'video' : 'image',
-                timeout: 180000, // 3 minutes timeout for large files
-                chunk_size: 6000000, // 6MB chunks for better reliability
+                timeout: 300000, // 5 minutes timeout for videos
+                chunk_size: 6000000, // 6MB chunks
+                eager: isVideo ? [{ quality: 'auto' }] : undefined, // Optimize video on upload
+                eager_async: isVideo // Process videos asynchronously for faster response
             },
             (error, result) => {
                 if (error) {
