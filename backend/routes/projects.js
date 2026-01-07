@@ -126,48 +126,58 @@ router.post('/', authenticateToken, upload.array('images', 10), async (req, res)
 });
 
 // PUT update project (protected)
-router.put('/:id', authenticateToken, upload.array('images', 10), (req, res) => {
+router.put('/:id', authenticateToken, upload.array('images', 10), async (req, res) => {
     const db = req.app.locals.db;
     const { title, description, category, location, completionDate, clientName, existingImages } = req.body;
 
-    // Combine existing images with new uploads
-    let images = existingImages ? JSON.parse(existingImages) : [];
-    if (req.files && req.files.length > 0) {
-        const newImages = req.files.map(file => `/uploads/${file.filename}`);
-        images = [...images, ...newImages];
-    }
+    try {
+        // Combine existing images with new uploads
+        let images = existingImages ? JSON.parse(existingImages) : [];
 
-    const query = `
-    UPDATE projects 
-    SET title = ?, description = ?, category = ?, location = ?, 
-        completiondate = ?, clientname = ?, images = ?, updatedat = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `;
-
-    db.run(
-        query,
-        [title, description, category, location, completionDate, clientName, JSON.stringify(images), req.params.id],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-
-            if (this.changes === 0) {
-                return res.status(404).json({ error: 'Project not found' });
-            }
-
-            res.json({
-                id: req.params.id,
-                title,
-                description,
-                category,
-                location,
-                completionDate,
-                clientName,
-                images
-            });
+        if (req.files && req.files.length > 0) {
+            // Upload new files to Cloudinary
+            const uploadPromises = req.files.map(file =>
+                uploadToCloudinary(file.buffer, file.originalname)
+            );
+            const newImages = await Promise.all(uploadPromises);
+            images = [...images, ...newImages];
         }
-    );
+
+        const query = `
+        UPDATE projects 
+        SET title = ?, description = ?, category = ?, location = ?, 
+            completiondate = ?, clientname = ?, images = ?, updatedat = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+        db.run(
+            query,
+            [title, description, category, location, completionDate, clientName, JSON.stringify(images), req.params.id],
+            function (err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+
+                if (this.changes === 0) {
+                    return res.status(404).json({ error: 'Project not found' });
+                }
+
+                res.json({
+                    id: req.params.id,
+                    title,
+                    description,
+                    category,
+                    location,
+                    completionDate,
+                    clientName,
+                    images
+                });
+            }
+        );
+    } catch (uploadError) {
+        console.error('Upload error:', uploadError);
+        res.status(500).json({ error: 'File upload failed: ' + uploadError.message });
+    }
 });
 
 // DELETE project (protected)
