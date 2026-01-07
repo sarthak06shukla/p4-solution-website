@@ -23,8 +23,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 const dbWrapper = {
     all: (sql, params, callback) => {
         if (isProduction) {
-            // PostgreSQL
-            db.query(sql.replace(/\?/g, (_, i) => `$${params.indexOf(_) + 1}`), params)
+            // PostgreSQL - convert ? to $1, $2, etc.
+            let i = 0;
+            const pgSql = sql.replace(/\?/g, () => `$${++i}`);
+            db.query(pgSql, params)
                 .then(result => callback(null, result.rows))
                 .catch(err => callback(err));
         } else {
@@ -34,8 +36,10 @@ const dbWrapper = {
     },
     get: (sql, params, callback) => {
         if (isProduction) {
-            // PostgreSQL
-            db.query(sql.replace(/\?/g, (_, i) => `$${params.indexOf(_) + 1}`), params)
+            // PostgreSQL - convert ? to $1, $2, etc.
+            let i = 0;
+            const pgSql = sql.replace(/\?/g, () => `$${++i}`);
+            db.query(pgSql, params)
                 .then(result => callback(null, result.rows[0] || null))
                 .catch(err => callback(err));
         } else {
@@ -45,11 +49,10 @@ const dbWrapper = {
     },
     run: (sql, params, callback) => {
         if (isProduction) {
-            // PostgreSQL
-            const paramPlaceholders = params.map((_, i) => `$${i + 1}`);
-            const pgSql = sql.replace(/\?/g, () => paramPlaceholders.shift());
-
-            db.query(pgSql + ' RETURNING id', params)
+            // PostgreSQL - convert ? to $1, $2, etc.
+            let i = 0;
+            const pgSql = sql.replace(/\?/g, () => `$${++i}`) + ' RETURNING id';
+            db.query(pgSql, params)
                 .then(result => callback(null, { lastID: result.rows[0]?.id, changes: result.rowCount }))
                 .catch(err => callback(err));
         } else {
