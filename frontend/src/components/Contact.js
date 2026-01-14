@@ -115,11 +115,13 @@ function Contact({ fullPage = false }) {
                             )}
 
                             <div className="form-group">
-                                <label className="form-label">Name *</label>
+                                <label htmlFor="contact-name" className="form-label">Name *</label>
                                 <input
                                     type="text"
+                                    id="contact-name"
                                     name="name"
                                     className="form-input"
+                                    placeholder="Your full name"
                                     value={formData.name}
                                     onChange={handleChange}
                                     required
@@ -127,11 +129,13 @@ function Contact({ fullPage = false }) {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Email *</label>
+                                <label htmlFor="contact-email" className="form-label">Email *</label>
                                 <input
                                     type="email"
+                                    id="contact-email"
                                     name="email"
                                     className="form-input"
+                                    placeholder="your.email@example.com"
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
@@ -139,21 +143,25 @@ function Contact({ fullPage = false }) {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Phone</label>
+                                <label htmlFor="contact-phone" className="form-label">Phone</label>
                                 <input
                                     type="tel"
+                                    id="contact-phone"
                                     name="phone"
                                     className="form-input"
+                                    placeholder="+91 XXXXXXXXXX"
                                     value={formData.phone}
                                     onChange={handleChange}
                                 />
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Message *</label>
+                                <label htmlFor="contact-message" className="form-label">Message *</label>
                                 <textarea
+                                    id="contact-message"
                                     name="message"
                                     className="form-textarea"
+                                    placeholder="Tell us about your project..."
                                     value={formData.message}
                                     onChange={handleChange}
                                     required
