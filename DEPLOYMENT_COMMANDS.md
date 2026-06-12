@@ -36,9 +36,10 @@ ADMIN_USERNAME=<choose-username>
 ADMIN_PASSWORD=<choose-strong-password>
 EMAIL_USER=p4solution@gmail.com
 EMAIL_PASSWORD=<gmail-app-password>
-CLOUDINARY_CLOUD_NAME=dtevstubw
-CLOUDINARY_API_KEY=249514244733799
-CLOUDINARY_API_SECRET=Pq1IK5xQ2QQOqqzm4-k8oWcQ5bA
+EMAIL_TO=p4solution@gmail.com
+CLOUDINARY_CLOUD_NAME=<cloudinary-cloud-name>
+CLOUDINARY_API_KEY=<cloudinary-api-key>
+CLOUDINARY_API_SECRET=<cloudinary-api-secret>
 ```
 
 ## Environment Variables for Render Frontend
@@ -100,6 +101,12 @@ Use this online or in terminal:
 1. Check REACT_APP_API_URL is correct backend URL + `/api`
 2. Check backend FRONTEND_URL matches frontend URL
 3. Redeploy frontend after fixing
+
+### If Portfolio Media Disappears
+1. Open `https://p4-solution-backend.onrender.com/api/projects`
+2. If it shows `getaddrinfo ENOTFOUND` or says the project database is unavailable, replace `DATABASE_URL` in Render with the active PostgreSQL internal connection string
+3. Redeploy or restart the backend service
+4. If credentials were exposed in GitHub, rotate the Cloudinary API secret and update Render
 
 ### If Database Migration Fails
 1. Ensure PostgreSQL database is running

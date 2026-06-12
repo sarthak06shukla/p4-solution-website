@@ -92,6 +92,7 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your_password
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASSWORD=your_gmail_app_password
+EMAIL_TO=your_email@gmail.com
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
@@ -134,6 +135,7 @@ Features:
 Contact form sends emails using Gmail SMTP. Configure in backend `.env`:
 - EMAIL_USER: Gmail address
 - EMAIL_PASSWORD: Gmail app password (not your account password)
+- EMAIL_TO: Destination inbox for contact form messages
 
 ## 🔐 Security
 

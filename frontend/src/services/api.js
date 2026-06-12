@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_URL } from '../config/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -57,6 +56,11 @@ export const projectsAPI = {
         });
     },
     delete: (id) => api.delete(`/projects/${id}`),
+};
+
+// Contact API
+export const contactAPI = {
+    send: (formData) => api.post('/contact', formData),
 };
 
 export default api;

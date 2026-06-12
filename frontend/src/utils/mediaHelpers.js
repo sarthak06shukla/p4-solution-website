@@ -1,3 +1,5 @@
+import { getApiOrigin } from '../config/api';
+
 // Helper function to get full URL for images/videos
 // Works with both old local URLs and new Cloudinary URLs
 export const getMediaUrl = (url) => {
@@ -8,13 +10,22 @@ export const getMediaUrl = (url) => {
         return url;
     }
 
-    // Otherwise, it's a local URL - prefix with backend server
-    return `http://localhost:5000${url}`;
+    const normalizedPath = url.startsWith('/') ? url : `/${url}`;
+
+    // Otherwise, it's an older local upload path - prefix with the active backend.
+    return `${getApiOrigin()}${normalizedPath}`;
 };
 
 // Helper function to check if a file is a video
 export const isVideo = (filename) => {
     if (!filename) return false;
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
-    return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+    const normalized = filename.toLowerCase();
+
+    if (normalized.includes('/video/upload/')) {
+        return true;
+    }
+
+    const pathWithoutQuery = normalized.split('?')[0].split('#')[0];
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.m4v'];
+    return videoExtensions.some(ext => pathWithoutQuery.endsWith(ext));
 };

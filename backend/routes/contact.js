@@ -2,6 +2,13 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const router = express.Router();
 
+const escapeHtml = (value = '') => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
 // POST contact form submission
 router.post('/', async (req, res) => {
     const { name, email, phone, message } = req.body;
@@ -15,38 +22,43 @@ router.post('/', async (req, res) => {
         // Check if email credentials are configured
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
             console.error('Email credentials not configured in environment variables');
-            // Return success anyway so the form doesn't fail
-            return res.json({
-                success: true,
-                message: 'Thank you! Your message has been received. We will contact you soon.'
+            return res.status(503).json({
+                error: 'Email service is not configured. Please call or email us directly.'
             });
         }
 
         // Create transporter using Gmail
         const transporter = nodemailer.createTransport({
             service: 'gmail',
+            connectionTimeout: 15000,
+            greetingTimeout: 10000,
+            socketTimeout: 20000,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASSWORD
             }
         });
 
-        // Verify transporter configuration
-        await transporter.verify();
+        const toEmail = process.env.EMAIL_TO || process.env.EMAIL_USER;
+        const safeName = escapeHtml(name);
+        const safeEmail = escapeHtml(email);
+        const safePhone = escapeHtml(phone || 'Not provided');
+        const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
+        const subjectName = String(name).replace(/[\r\n]/g, ' ').trim();
 
         // Email content
         const mailOptions = {
             from: process.env.EMAIL_USER,
-            to: process.env.EMAIL_USER,
+            to: toEmail,
             replyTo: email,
-            subject: `New Contact Form Submission from ${name}`,
+            subject: `New Contact Form Submission from ${subjectName}`,
             html: `
                 <h2>New Contact Form Submission</h2>
-                <p><strong>Name:</strong> ${name}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
+                <p><strong>Name:</strong> ${safeName}</p>
+                <p><strong>Email:</strong> ${safeEmail}</p>
+                <p><strong>Phone:</strong> ${safePhone}</p>
                 <p><strong>Message:</strong></p>
-                <p>${message}</p>
+                <p>${safeMessage}</p>
                 <hr>
                 <p><em>This message was sent from the P4 Solution contact form</em></p>
             `
@@ -68,10 +80,9 @@ router.post('/', async (req, res) => {
             command: error.command
         });
 
-        // Return success even if email fails, so contact form doesn't error
-        res.json({
-            success: true,
-            message: 'Thank you! Your message has been received. We will contact you soon.'
+        res.status(502).json({
+            error: 'Message could not be sent right now. Please call or email us directly.',
+            detail: process.env.NODE_ENV === 'production' ? undefined : error.message
         });
     }
 });

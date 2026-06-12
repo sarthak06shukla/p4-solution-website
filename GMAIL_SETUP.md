@@ -33,6 +33,7 @@ Example:
 ```
 EMAIL_USER=p4solution@gmail.com
 EMAIL_PASSWORD=abcdefghijklmnop
+EMAIL_TO=p4solution@gmail.com
 ```
 
 ### 4. Restart the Backend Server
@@ -63,6 +64,7 @@ Once configured, you can test by:
 - Make sure 2-Factor Authentication is enabled
 - Verify the App Password is correct (no spaces)
 - Check that EMAIL_USER is `p4solution@gmail.com`
+- Check that EMAIL_TO is the inbox where you want to receive leads
 - Restart the backend server after changing .env
 - Check backend console for error messages
 

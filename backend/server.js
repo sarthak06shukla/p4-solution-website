@@ -53,12 +53,17 @@ const dbWrapper = {
             let i = 0;
             const pgSql = sql.replace(/\?/g, () => `$${++i}`) + ' RETURNING id';
             db.query(pgSql, params)
-                .then(result => callback(null, { lastID: result.rows[0]?.id, changes: result.rowCount }))
+                .then(result => {
+                    callback.call(
+                        { lastID: result.rows[0]?.id, changes: result.rowCount },
+                        null
+                    );
+                })
                 .catch(err => callback(err));
         } else {
             // SQLite
             db.run(sql, params, function (err) {
-                callback(err, { lastID: this.lastID, changes: this.changes });
+                callback.call({ lastID: this.lastID, changes: this.changes }, err);
             });
         }
     }

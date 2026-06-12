@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { contactAPI } from '../services/api';
 import './Contact.css';
 
 function Contact({ fullPage = false }) {
@@ -9,6 +10,9 @@ function Contact({ fullPage = false }) {
         message: ''
     });
     const [submitted, setSubmitted] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [sending, setSending] = useState(false);
 
     const handleChange = (e) => {
         setFormData({
@@ -19,31 +23,30 @@ function Contact({ fullPage = false }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setSubmitted(false);
+        setStatusMessage('');
+        setErrorMessage('');
+        setSending(true);
 
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-            const response = await fetch(`${API_URL}/contact`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            });
+            const response = await contactAPI.send(formData);
 
-            const data = await response.json();
+            setSubmitted(true);
+            setStatusMessage(response.data?.message || "Thank you! We'll get back to you soon.");
+            setFormData({ name: '', email: '', phone: '', message: '' });
 
-            if (response.ok) {
-                setSubmitted(true);
-                setTimeout(() => {
-                    setSubmitted(false);
-                    setFormData({ name: '', email: '', phone: '', message: '' });
-                }, 3000);
-            } else {
-                alert(data.error || 'Failed to send message. Please try again.');
-            }
+            setTimeout(() => {
+                setSubmitted(false);
+                setStatusMessage('');
+            }, 5000);
         } catch (error) {
             console.error('Error:', error);
-            alert('Failed to send message. Please try again or contact us directly.');
+            setErrorMessage(
+                error.response?.data?.error ||
+                'Failed to send message. Please try again or contact us directly.'
+            );
+        } finally {
+            setSending(false);
         }
     };
 
@@ -64,7 +67,7 @@ function Contact({ fullPage = false }) {
                         <h3 className="mb-lg">Contact Information</h3>
 
                         <div className="info-item mb-lg">
-                            <div className="info-icon">📍</div>
+                            <div className="info-icon">&#128205;</div>
                             <div>
                                 <h4>Address</h4>
                                 <p>557/19 Om Nagar Jhande Wale Shukla<br />Alambagh, Lucknow<br />Uttar Pradesh, India - 226005</p>
@@ -72,7 +75,7 @@ function Contact({ fullPage = false }) {
                         </div>
 
                         <div className="info-item mb-lg">
-                            <div className="info-icon">📞</div>
+                            <div className="info-icon">&#128222;</div>
                             <div>
                                 <h4>Phone</h4>
                                 <p>+91 9415004108<br />+91 9793511008</p>
@@ -80,7 +83,7 @@ function Contact({ fullPage = false }) {
                         </div>
 
                         <div className="info-item mb-lg">
-                            <div className="info-icon">✉️</div>
+                            <div className="info-icon">&#9993;</div>
                             <div>
                                 <h4>Email</h4>
                                 <p>p4solution@gmail.com</p>
@@ -88,7 +91,7 @@ function Contact({ fullPage = false }) {
                         </div>
 
                         <div className="info-item">
-                            <div className="info-icon">🕐</div>
+                            <div className="info-icon">&#128336;</div>
                             <div>
                                 <h4>Business Hours</h4>
                                 <p>Monday - Friday: 8:00 AM - 6:00 PM<br />Saturday: 9:00 AM - 4:00 PM</p>
@@ -98,10 +101,10 @@ function Contact({ fullPage = false }) {
                         <div className="social-links mt-xl">
                             <h4 className="mb-md">Follow Us</h4>
                             <div className="social-icons">
-                                <a href="#" className="social-icon">FB</a>
-                                <a href="#" className="social-icon">IG</a>
-                                <a href="#" className="social-icon">LI</a>
-                                <a href="#" className="social-icon">TW</a>
+                                <button type="button" className="social-icon">FB</button>
+                                <button type="button" className="social-icon">IG</button>
+                                <button type="button" className="social-icon">LI</button>
+                                <button type="button" className="social-icon">TW</button>
                             </div>
                         </div>
                     </div>
@@ -110,7 +113,13 @@ function Contact({ fullPage = false }) {
                         <form className="contact-form glass-card" onSubmit={handleSubmit}>
                             {submitted && (
                                 <div className="success-message">
-                                    ✓ Thank you! We'll get back to you soon.
+                                    {statusMessage}
+                                </div>
+                            )}
+
+                            {errorMessage && (
+                                <div className="error-message">
+                                    {errorMessage}
                                 </div>
                             )}
 
@@ -168,8 +177,13 @@ function Contact({ fullPage = false }) {
                                 ></textarea>
                             </div>
 
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                                Send Message
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                style={{ width: '100%' }}
+                                disabled={sending}
+                            >
+                                {sending ? 'Sending...' : 'Send Message'}
                             </button>
                         </form>
                     </div>

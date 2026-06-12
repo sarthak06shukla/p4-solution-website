@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../services/api';
-import { getMediaUrl } from '../utils/mediaHelpers';
+import { getMediaUrl, isVideo } from '../utils/mediaHelpers';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -106,10 +106,14 @@ function Dashboard() {
                                         <td>
                                             <div className="table-image">
                                                 {project.images && project.images[0] ? (
-                                                    <img
-                                                        src={getMediaUrl(project.images[0])}
-                                                        alt={project.title}
-                                                    />
+                                                    isVideo(project.images[0]) ? (
+                                                        <video src={getMediaUrl(project.images[0])} muted />
+                                                    ) : (
+                                                        <img
+                                                            src={getMediaUrl(project.images[0])}
+                                                            alt={project.title}
+                                                        />
+                                                    )
                                                 ) : (
                                                     <div className="no-image">No Image</div>
                                                 )}
@@ -121,18 +125,24 @@ function Dashboard() {
                                         <td>{project.completionDate || '-'}</td>
                                         <td>
                                             <div className="action-buttons">
-                                                <Link
-                                                    to={`/admin/project/edit/${project.id}`}
-                                                    className="btn-action btn-edit"
-                                                >
-                                                    Edit
-                                                </Link>
-                                                <button
-                                                    onClick={() => handleDelete(project.id)}
-                                                    className="btn-action btn-delete"
-                                                >
-                                                    Delete
-                                                </button>
+                                                {project.isCloudinaryFallback ? (
+                                                    <span className="recovered-badge">Recovered media</span>
+                                                ) : (
+                                                    <>
+                                                        <Link
+                                                            to={`/admin/project/edit/${project.id}`}
+                                                            className="btn-action btn-edit"
+                                                        >
+                                                            Edit
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDelete(project.id)}
+                                                            className="btn-action btn-delete"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

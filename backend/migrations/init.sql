@@ -8,15 +8,15 @@ CREATE TABLE IF NOT EXISTS projects (
     description TEXT,
     category VARCHAR(100),
     location VARCHAR(255),
-    "completionDate" VARCHAR(100),
-    "clientName" VARCHAR(255),
+    completiondate VARCHAR(100),
+    clientname VARCHAR(255),
     images TEXT,
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create index on category for faster filtering
 CREATE INDEX IF NOT EXISTS idx_projects_category ON projects(category);
 
 -- Create index on createdAt for sorting
-CREATE INDEX IF NOT EXISTS idx_projects_created ON projects("createdAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_created ON projects(createdat DESC);

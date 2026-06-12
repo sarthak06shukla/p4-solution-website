@@ -5,6 +5,8 @@ const streamifier = require('streamifier');
 const { authenticateToken } = require('./auth');
 
 const router = express.Router();
+const CLOUDINARY_FOLDER = 'p4-solution-projects';
+const CLOUDINARY_FALLBACK_ID_PREFIX = 'cloudinary-';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -26,7 +28,7 @@ const uploadToCloudinary = (buffer, filename) => {
 
         const uploadStream = cloudinary.uploader.upload_stream(
             {
-                folder: 'p4-solution-projects',
+                folder: CLOUDINARY_FOLDER,
                 resource_type: isVideo ? 'video' : 'image',
                 timeout: 300000, // 5 minutes timeout for videos
                 chunk_size: 6000000, // 6MB chunks
@@ -60,43 +62,190 @@ const uploadToCloudinary = (buffer, filename) => {
     });
 };
 
+const hasCloudinaryConfig = () => (
+    Boolean(process.env.CLOUDINARY_CLOUD_NAME) &&
+    Boolean(process.env.CLOUDINARY_API_KEY) &&
+    Boolean(process.env.CLOUDINARY_API_SECRET)
+);
+
+const parseImages = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.error('Invalid project images JSON:', error.message);
+        return [];
+    }
+};
+
+const serializeProject = (row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    location: row.location,
+    completionDate: row.completionDate || row.completiondate || '',
+    clientName: row.clientName || row.clientname || '',
+    images: parseImages(row.images),
+    createdAt: row.createdAt || row.createdat,
+    updatedAt: row.updatedAt || row.updatedat
+});
+
+const encodeFallbackId = (publicId) => {
+    const encoded = Buffer.from(publicId)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+    return `${CLOUDINARY_FALLBACK_ID_PREFIX}${encoded}`;
+};
+
+const titleFromPublicId = (publicId) => {
+    const filename = publicId.split('/').pop() || 'Project Media';
+    return filename
+        .replace(/\.[^.]+$/, '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, char => char.toUpperCase());
+};
+
+const fetchCloudinaryResources = async (resourceType) => {
+    const response = await cloudinary.api.resources({
+        type: 'upload',
+        resource_type: resourceType,
+        prefix: `${CLOUDINARY_FOLDER}/`,
+        max_results: 100
+    });
+
+    return response.resources || [];
+};
+
+const getCloudinaryFallbackProjects = async () => {
+    if (!hasCloudinaryConfig()) {
+        return [];
+    }
+
+    const [images, videos] = await Promise.all([
+        fetchCloudinaryResources('image'),
+        fetchCloudinaryResources('video')
+    ]);
+
+    return [...images, ...videos]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .map(resource => ({
+            id: encodeFallbackId(resource.public_id),
+            title: titleFromPublicId(resource.public_id),
+            description: 'Project media recovered from Cloudinary while the project database is unavailable.',
+            category: resource.resource_type === 'video' ? 'Video' : 'Gallery',
+            location: '',
+            completionDate: '',
+            clientName: '',
+            images: [resource.secure_url],
+            createdAt: resource.created_at,
+            updatedAt: resource.created_at,
+            isCloudinaryFallback: true
+        }));
+};
+
+const getCloudinaryPublicIdFromUrl = (url) => {
+    try {
+        const parsed = new URL(url);
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        const uploadIndex = parts.indexOf('upload');
+
+        if (uploadIndex === -1) {
+            return null;
+        }
+
+        const publicIdParts = parts.slice(uploadIndex + 1);
+
+        if (publicIdParts[0] && /^v\d+$/.test(publicIdParts[0])) {
+            publicIdParts.shift();
+        }
+
+        return publicIdParts.join('/').replace(/\.[^.]+$/, '');
+    } catch (error) {
+        return null;
+    }
+};
+
 // GET all projects
 router.get('/', (req, res) => {
     const db = req.app.locals.db;
 
-    db.all('SELECT * FROM projects ORDER BY createdAt DESC', [], (err, rows) => {
+    db.all('SELECT * FROM projects ORDER BY createdAt DESC', [], async (err, rows) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            console.error('Project database error:', err);
+
+            try {
+                const fallbackProjects = await getCloudinaryFallbackProjects();
+
+                if (fallbackProjects.length > 0) {
+                    return res.json(fallbackProjects);
+                }
+            } catch (fallbackError) {
+                console.error('Cloudinary fallback error:', fallbackError);
+            }
+
+            return res.status(503).json({
+                error: 'Project database is unavailable. Please check DATABASE_URL in the backend hosting environment.',
+                detail: err.message
+            });
         }
 
-        const projects = rows.map(row => ({
-            ...row,
-            images: row.images ? JSON.parse(row.images) : []
-        }));
+        if (rows.length === 0) {
+            try {
+                const fallbackProjects = await getCloudinaryFallbackProjects();
 
-        res.json(projects);
+                if (fallbackProjects.length > 0) {
+                    return res.json(fallbackProjects);
+                }
+            } catch (fallbackError) {
+                console.error('Cloudinary fallback error:', fallbackError);
+            }
+        }
+
+        res.json(rows.map(serializeProject));
     });
 });
 
 // GET single project
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
+    if (req.params.id.startsWith(CLOUDINARY_FALLBACK_ID_PREFIX)) {
+        try {
+            const fallbackProjects = await getCloudinaryFallbackProjects();
+            const project = fallbackProjects.find(item => item.id === req.params.id);
+
+            if (!project) {
+                return res.status(404).json({ error: 'Project not found' });
+            }
+
+            return res.json(project);
+        } catch (fallbackError) {
+            console.error('Cloudinary fallback detail error:', fallbackError);
+            return res.status(503).json({ error: 'Project media is temporarily unavailable.' });
+        }
+    }
+
     const db = req.app.locals.db;
 
     db.get('SELECT * FROM projects WHERE id = ?', [req.params.id], (err, row) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            console.error('Project database error:', err);
+            return res.status(503).json({
+                error: 'Project database is unavailable. Please check DATABASE_URL in the backend hosting environment.',
+                detail: err.message
+            });
         }
 
         if (!row) {
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        const project = {
-            ...row,
-            images: row.images ? JSON.parse(row.images) : []
-        };
-
-        res.json(project);
+        res.json(serializeProject(row));
     });
 });
 
@@ -110,8 +259,12 @@ router.post('/', authenticateToken, upload.array('images', 10), async (req, res)
     }
 
     try {
+        if (req.files?.length && !hasCloudinaryConfig()) {
+            return res.status(500).json({ error: 'Cloudinary credentials are not configured.' });
+        }
+
         // Upload files to Cloudinary
-        const uploadPromises = req.files.map(file =>
+        const uploadPromises = (req.files || []).map(file =>
             uploadToCloudinary(file.buffer, file.originalname)
         );
         const images = await Promise.all(uploadPromises);
@@ -153,9 +306,13 @@ router.put('/:id', authenticateToken, upload.array('images', 10), async (req, re
     const { title, description, category, location, completionDate, clientName, existingImages } = req.body;
 
     try {
-        let images = existingImages ? JSON.parse(existingImages) : [];
+        let images = parseImages(existingImages);
 
         if (req.files && req.files.length > 0) {
+            if (!hasCloudinaryConfig()) {
+                return res.status(500).json({ error: 'Cloudinary credentials are not configured.' });
+            }
+
             const uploadPromises = req.files.map(file =>
                 uploadToCloudinary(file.buffer, file.originalname)
             );
@@ -225,8 +382,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
                 try {
                     const images = JSON.parse(row.images);
                     for (const imageUrl of images) {
-                        const publicId = imageUrl.split('/').slice(-2).join('/').split('.')[0];
-                        await cloudinary.uploader.destroy(`p4-solution-projects/${publicId}`);
+                        const publicId = getCloudinaryPublicIdFromUrl(imageUrl);
+
+                        if (!publicId) {
+                            continue;
+                        }
+
+                        const resourceType = /\.(mp4|mov|avi|webm|m4v)(\?|#|$)/i.test(imageUrl)
+                            ? 'video'
+                            : 'image';
+
+                        await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
                     }
                 } catch (deleteError) {
                     console.error('Cloudinary delete error:', deleteError);

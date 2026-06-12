@@ -63,6 +63,8 @@
     border: 2px solid transparent;
     border-radius: var(--radius-sm);
     font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
     transition: all var(--transition-normal);
 }
 
@@ -79,6 +81,17 @@
 
 .success-message {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+    font-weight: 600;
+    animation: slideIn 0.3s ease;
+}
+
+.error-message {
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
     color: white;
     padding: var(--spacing-md);
     border-radius: var(--radius-sm);
