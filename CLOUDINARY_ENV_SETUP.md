@@ -21,4 +21,4 @@ If any Cloudinary credentials were ever committed to GitHub, rotate the API secr
 ## Notes
 
 - New project uploads are stored in the `p4-solution-projects` Cloudinary folder.
-- The public projects API can temporarily show Cloudinary media if PostgreSQL is unavailable, but project titles/descriptions still require the database.
+- The public projects API can temporarily show the saved fallback project list from `backend/data/projects.fallback.json` if PostgreSQL is unavailable.

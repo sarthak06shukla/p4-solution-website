@@ -3,6 +3,7 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
 const { authenticateToken } = require('./auth');
+const savedFallbackProjects = require('../data/projects.fallback.json');
 
 const router = express.Router();
 const CLOUDINARY_FOLDER = 'p4-solution-projects';
@@ -150,6 +151,17 @@ const getCloudinaryFallbackProjects = async () => {
         }));
 };
 
+const getSavedFallbackProjects = () => (
+    savedFallbackProjects.map(project => ({
+        ...project,
+        isStaticFallback: true
+    }))
+);
+
+const getSavedFallbackProject = (id) => (
+    getSavedFallbackProjects().find(project => String(project.id) === String(id))
+);
+
 const getCloudinaryPublicIdFromUrl = (url) => {
     try {
         const parsed = new URL(url);
@@ -180,6 +192,12 @@ router.get('/', (req, res) => {
         if (err) {
             console.error('Project database error:', err);
 
+            const savedProjects = getSavedFallbackProjects();
+
+            if (savedProjects.length > 0) {
+                return res.json(savedProjects);
+            }
+
             try {
                 const fallbackProjects = await getCloudinaryFallbackProjects();
 
@@ -197,6 +215,12 @@ router.get('/', (req, res) => {
         }
 
         if (rows.length === 0) {
+            const savedProjects = getSavedFallbackProjects();
+
+            if (savedProjects.length > 0) {
+                return res.json(savedProjects);
+            }
+
             try {
                 const fallbackProjects = await getCloudinaryFallbackProjects();
 
@@ -235,6 +259,12 @@ router.get('/:id', async (req, res) => {
     db.get('SELECT * FROM projects WHERE id = ?', [req.params.id], (err, row) => {
         if (err) {
             console.error('Project database error:', err);
+            const savedProject = getSavedFallbackProject(req.params.id);
+
+            if (savedProject) {
+                return res.json(savedProject);
+            }
+
             return res.status(503).json({
                 error: 'Project database is unavailable. Please check DATABASE_URL in the backend hosting environment.',
                 detail: err.message
@@ -242,6 +272,12 @@ router.get('/:id', async (req, res) => {
         }
 
         if (!row) {
+            const savedProject = getSavedFallbackProject(req.params.id);
+
+            if (savedProject) {
+                return res.json(savedProject);
+            }
+
             return res.status(404).json({ error: 'Project not found' });
         }
 

@@ -125,7 +125,7 @@ function Dashboard() {
                                         <td>{project.completionDate || '-'}</td>
                                         <td>
                                             <div className="action-buttons">
-                                                {project.isCloudinaryFallback ? (
+                                                {project.isCloudinaryFallback || project.isStaticFallback ? (
                                                     <span className="recovered-badge">Recovered media</span>
                                                 ) : (
                                                     <>
