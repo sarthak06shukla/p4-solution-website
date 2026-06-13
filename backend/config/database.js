@@ -1,8 +1,53 @@
 const sqlite3 = require('sqlite3').verbose();
 const { Pool } = require('pg');
 const path = require('path');
+const savedFallbackProjects = require('../data/projects.fallback.json');
 
 const isProduction = process.env.NODE_ENV === 'production';
+
+const seedFallbackProjectsIfEmpty = async (pool) => {
+    const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM projects');
+
+    if (countResult.rows[0].count > 0) {
+        console.log('PostgreSQL: Existing projects found, skipping fallback seed');
+        return;
+    }
+
+    for (const project of savedFallbackProjects) {
+        await pool.query(
+            `
+                INSERT INTO projects (
+                    id, title, description, category, location, completiondate,
+                    clientname, images, createdat, updatedat
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                ON CONFLICT (id) DO NOTHING
+            `,
+            [
+                project.id,
+                project.title,
+                project.description,
+                project.category,
+                project.location,
+                project.completionDate,
+                project.clientName,
+                JSON.stringify(project.images || []),
+                project.createdAt,
+                project.updatedAt
+            ]
+        );
+    }
+
+    await pool.query(`
+        SELECT setval(
+            pg_get_serial_sequence('projects', 'id'),
+            COALESCE((SELECT MAX(id) FROM projects), 1),
+            true
+        )
+    `);
+
+    console.log(`PostgreSQL: Seeded ${savedFallbackProjects.length} fallback projects`);
+};
 
 if (isProduction) {
     // PostgreSQL for production
@@ -27,8 +72,9 @@ if (isProduction) {
             createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updatedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    `).then(() => {
+    `).then(async () => {
         console.log('PostgreSQL: Projects table ready');
+        await seedFallbackProjectsIfEmpty(pool);
     }).catch(err => {
         console.error('PostgreSQL table creation error:', err);
     });
