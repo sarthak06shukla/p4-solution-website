@@ -4,9 +4,6 @@ import { API_URL } from '../config/api';
 // Create axios instance with default config
 const api = axios.create({
     baseURL: API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
 // Add token to requests if it exists
@@ -46,14 +43,10 @@ export const projectsAPI = {
     getAll: () => api.get('/projects'),
     getOne: (id) => api.get(`/projects/${id}`),
     create: (formData) => {
-        return api.post('/projects', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        return api.post('/projects', formData);
     },
     update: (id, formData) => {
-        return api.put(`/projects/${id}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        return api.put(`/projects/${id}`, formData);
     },
     delete: (id) => api.delete(`/projects/${id}`),
 };

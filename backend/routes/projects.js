@@ -1,17 +1,28 @@
 const express = require('express');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const crypto = require('crypto');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
 const { authenticateToken } = require('./auth');
 const savedFallbackProjects = require('../data/projects.fallback.json');
+const {
+    isProduction,
+    projectStore: PROJECT_STORE
+} = require('../config/projectStore');
 
 const router = express.Router();
-const isProduction = process.env.NODE_ENV === 'production';
-const PROJECT_STORE = process.env.PROJECT_STORE || (isProduction ? 'cloudinary' : 'database');
 const PROJECTS_TABLE = isProduction ? 'p4_projects' : 'projects';
 const CLOUDINARY_FOLDER = 'p4-solution-projects';
 const CLOUDINARY_FALLBACK_ID_PREFIX = 'cloudinary-';
 const CLOUDINARY_DATA_PUBLIC_ID = 'p4-solution-data/projects.json';
+const MAX_UPLOAD_FILES = 10;
+const MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024;
+const uploadTempDir = path.join(os.tmpdir(), 'p4-solution-uploads');
+
+fs.mkdirSync(uploadTempDir, { recursive: true });
 
 // Configure Cloudinary
 cloudinary.config({
@@ -20,51 +31,113 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configure multer to use memory storage
+// Configure multer to use temp files so large videos do not sit in server memory.
 const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+    storage: multer.diskStorage({
+        destination: uploadTempDir,
+        filename: (req, file, callback) => {
+            const extension = path.extname(file.originalname || '').toLowerCase() || '.upload';
+            callback(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${extension}`);
+        }
+    }),
+    limits: {
+        fileSize: MAX_UPLOAD_SIZE_BYTES,
+        files: MAX_UPLOAD_FILES
+    },
+    fileFilter: (req, file, callback) => {
+        const mimetype = file.mimetype || '';
+
+        if (mimetype.startsWith('image/') || mimetype.startsWith('video/')) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error('Only image and video files can be uploaded.'));
+    }
 });
 
-// Helper function to upload to Cloudinary
-const uploadToCloudinary = (buffer, filename) => {
-    return new Promise((resolve, reject) => {
-        const isVideo = /\.(mp4|mov|avi|webm)$/i.test(filename);
+const cleanupUploadedFiles = async (files = []) => {
+    await Promise.all((files || []).map(async (file) => {
+        if (!file?.path) {
+            return;
+        }
 
-        const uploadStream = cloudinary.uploader.upload_stream(
-            {
-                folder: CLOUDINARY_FOLDER,
-                resource_type: isVideo ? 'video' : 'image',
-                timeout: 300000, // 5 minutes timeout for videos
-                chunk_size: 6000000, // 6MB chunks
-                eager: isVideo ? [{ quality: 'auto' }] : undefined,
-                eager_async: isVideo
-            },
-            (error, result) => {
-                if (error) {
-                    logSafeError('Cloudinary upload error:', error);
-                    reject(error);
-                } else {
-                    console.log('Upload successful:', result.secure_url);
-                    resolve(result.secure_url);
-                }
-            }
-        );
+        try {
+            await fs.promises.unlink(file.path);
+        } catch (error) {
+            console.warn('Temporary upload cleanup failed:', error.message);
+        }
+    }));
+};
 
-        uploadStream.on('error', (streamError) => {
-            console.error('Upload stream error:', streamError);
-            reject(streamError);
-        });
+const getUploadErrorResponse = (error) => {
+    if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return {
+                status: 413,
+                message: 'One of the selected files is larger than 100MB. Please compress it or upload a smaller file.'
+            };
+        }
 
-        const readStream = streamifier.createReadStream(buffer);
+        if (error.code === 'LIMIT_FILE_COUNT') {
+            return {
+                status: 400,
+                message: `You can upload a maximum of ${MAX_UPLOAD_FILES} files at once.`
+            };
+        }
 
-        readStream.on('error', (readError) => {
-            console.error('Read stream error:', readError);
-            reject(readError);
-        });
+        return {
+            status: 400,
+            message: error.message || 'The selected files could not be uploaded.'
+        };
+    }
 
-        readStream.pipe(uploadStream);
+    return {
+        status: 400,
+        message: error.message || 'The selected files could not be uploaded.'
+    };
+};
+
+const projectUpload = upload.array('images', MAX_UPLOAD_FILES);
+
+const handleProjectUpload = (req, res, next) => {
+    projectUpload(req, res, async (error) => {
+        if (!error) {
+            next();
+            return;
+        }
+
+        await cleanupUploadedFiles(req.files);
+        const response = getUploadErrorResponse(error);
+        res.status(response.status).json({ error: response.message });
     });
+};
+
+// Helper function to upload to Cloudinary
+const uploadToCloudinary = async (file) => {
+    const filename = file.originalname || file.filename || '';
+    const mimetype = file.mimetype || '';
+    const isVideo = mimetype.startsWith('video/') || /\.(mp4|mov|avi|webm|m4v)$/i.test(filename);
+    const options = {
+        folder: CLOUDINARY_FOLDER,
+        resource_type: isVideo ? 'video' : 'image',
+        timeout: 300000
+    };
+
+    try {
+        const result = isVideo
+            ? await cloudinary.uploader.upload_large(file.path, {
+                ...options,
+                chunk_size: 6000000
+            })
+            : await cloudinary.uploader.upload(file.path, options);
+
+        console.log('Upload successful:', result.secure_url);
+        return result.secure_url;
+    } catch (error) {
+        logSafeError('Cloudinary upload error:', error);
+        throw error;
+    }
 };
 
 const hasCloudinaryConfig = () => (
@@ -484,7 +557,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST new project (protected)
-router.post('/', authenticateToken, upload.array('images', 10), async (req, res) => {
+router.post('/', authenticateToken, handleProjectUpload, async (req, res) => {
     const db = req.app.locals.db;
     const { title, description, category, location, completionDate, clientName } = req.body;
 
@@ -502,9 +575,7 @@ router.post('/', authenticateToken, upload.array('images', 10), async (req, res)
         }
 
         // Upload files to Cloudinary
-        const uploadPromises = (req.files || []).map(file =>
-            uploadToCloudinary(file.buffer, file.originalname)
-        );
+        const uploadPromises = (req.files || []).map(file => uploadToCloudinary(file));
         const images = await Promise.all(uploadPromises);
 
         if (usesCloudinaryProjectStore()) {
@@ -550,11 +621,13 @@ router.post('/', authenticateToken, upload.array('images', 10), async (req, res)
     } catch (uploadError) {
         logSafeError('Project create error:', uploadError);
         res.status(500).json({ error: 'Project save failed: ' + getErrorMessage(uploadError) });
+    } finally {
+        await cleanupUploadedFiles(req.files);
     }
 });
 
 // PUT update project (protected)
-router.put('/:id', authenticateToken, upload.array('images', 10), async (req, res) => {
+router.put('/:id', authenticateToken, handleProjectUpload, async (req, res) => {
     const db = req.app.locals.db;
     const { title, description, category, location, completionDate, clientName, existingImages } = req.body;
 
@@ -570,9 +643,7 @@ router.put('/:id', authenticateToken, upload.array('images', 10), async (req, re
                 return res.status(500).json({ error: 'Cloudinary credentials are not configured.' });
             }
 
-            const uploadPromises = req.files.map(file =>
-                uploadToCloudinary(file.buffer, file.originalname)
-            );
+            const uploadPromises = req.files.map(file => uploadToCloudinary(file));
             const newImages = await Promise.all(uploadPromises);
             images = [...images, ...newImages];
         }
@@ -632,6 +703,8 @@ router.put('/:id', authenticateToken, upload.array('images', 10), async (req, re
     } catch (uploadError) {
         logSafeError('Project update error:', uploadError);
         res.status(500).json({ error: 'Project save failed: ' + getErrorMessage(uploadError) });
+    } finally {
+        await cleanupUploadedFiles(req.files);
     }
 });
 

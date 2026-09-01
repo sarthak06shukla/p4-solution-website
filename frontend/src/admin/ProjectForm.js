@@ -1,8 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { projectsAPI } from '../services/api';
 import { getMediaUrl } from '../utils/mediaHelpers';
 import './ProjectForm.css';
+
+const MAX_UPLOAD_FILES = 10;
+const MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_UPLOAD_SIZE_MB = MAX_UPLOAD_SIZE_BYTES / 1024 / 1024;
+
+const formatFileSize = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+
+const isSupportedMediaFile = (file) => (
+    file.type.startsWith('image/') ||
+    file.type.startsWith('video/') ||
+    /\.(jpe?g|png|webp|gif|mp4|mov|avi|webm|m4v)$/i.test(file.name)
+);
 
 function ProjectForm() {
     const navigate = useNavigate();
@@ -22,20 +34,7 @@ function ProjectForm() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        // Check authentication
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/admin/login');
-            return;
-        }
-
-        if (isEdit) {
-            fetchProject();
-        }
-    }, [id, isEdit, navigate]);
-
-    const fetchProject = async () => {
+    const fetchProject = useCallback(async () => {
         try {
             const response = await projectsAPI.getOne(id);
             const project = response.data;
@@ -52,7 +51,20 @@ function ProjectForm() {
             console.error('Error fetching project:', error);
             setError('Failed to load project');
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        // Check authentication
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/admin/login');
+            return;
+        }
+
+        if (isEdit) {
+            fetchProject();
+        }
+    }, [fetchProject, isEdit, navigate]);
 
     const handleChange = (e) => {
         setFormData({
@@ -63,6 +75,31 @@ function ProjectForm() {
 
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
+
+        if (files.length > MAX_UPLOAD_FILES) {
+            setImages([]);
+            setError(`Please select ${MAX_UPLOAD_FILES} files or fewer.`);
+            e.target.value = '';
+            return;
+        }
+
+        const unsupportedFile = files.find(file => !isSupportedMediaFile(file));
+        if (unsupportedFile) {
+            setImages([]);
+            setError(`${unsupportedFile.name} is not a supported image or video file.`);
+            e.target.value = '';
+            return;
+        }
+
+        const oversizedFile = files.find(file => file.size > MAX_UPLOAD_SIZE_BYTES);
+        if (oversizedFile) {
+            setImages([]);
+            setError(`${oversizedFile.name} is ${formatFileSize(oversizedFile.size)}. Please keep each file under ${MAX_UPLOAD_SIZE_MB}MB.`);
+            e.target.value = '';
+            return;
+        }
+
+        setError('');
         setImages(files);
     };
 
@@ -231,7 +268,7 @@ function ProjectForm() {
                                 multiple
                                 onChange={handleImageChange}
                             />
-                            <p className="form-help">Select images (JPG, PNG, WebP) or videos (MP4, MOV, WebM). Max 100MB each.</p>
+                            <p className="form-help">Select images (JPG, PNG, WebP) or videos (MP4, MOV, WebM). Max 10 files and 100MB each.</p>
 
                             {images.length > 0 && (
                                 <div className="new-images mt-md">
