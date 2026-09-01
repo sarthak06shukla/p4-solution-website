@@ -1,4 +1,3 @@
-const sqlite3 = require('sqlite3').verbose();
 const { Pool } = require('pg');
 const path = require('path');
 const savedFallbackProjects = require('../data/projects.fallback.json');
@@ -90,6 +89,7 @@ if (isProduction) {
     // SQLite for development
     console.log('Using SQLite (Development)');
 
+    const sqlite3 = require('sqlite3').verbose();
     const db = new sqlite3.Database(path.join(__dirname, '../database.db'), (err) => {
         if (err) {
             console.error('SQLite connection error:', err);
