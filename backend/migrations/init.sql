@@ -1,8 +1,8 @@
 -- PostgreSQL Database Schema for P4 Solution Website
 -- Run this after creating PostgreSQL database on Render
 
--- Create projects table
-CREATE TABLE IF NOT EXISTS projects (
+-- Create P4 projects table
+CREATE TABLE IF NOT EXISTS p4_projects (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 
 -- Create index on category for faster filtering
-CREATE INDEX IF NOT EXISTS idx_projects_category ON projects(category);
+CREATE INDEX IF NOT EXISTS idx_p4_projects_category ON p4_projects(category);
 
 -- Create index on createdAt for sorting
-CREATE INDEX IF NOT EXISTS idx_projects_created ON projects(createdat DESC);
+CREATE INDEX IF NOT EXISTS idx_p4_projects_created ON p4_projects(createdat DESC);

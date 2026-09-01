@@ -4,19 +4,20 @@ const path = require('path');
 const savedFallbackProjects = require('../data/projects.fallback.json');
 
 const isProduction = process.env.NODE_ENV === 'production';
+const PROJECTS_TABLE = 'p4_projects';
 
 const seedFallbackProjectsIfEmpty = async (pool) => {
-    const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM projects');
+    const countResult = await pool.query(`SELECT COUNT(*)::int AS count FROM ${PROJECTS_TABLE}`);
 
     if (countResult.rows[0].count > 0) {
-        console.log('PostgreSQL: Existing projects found, skipping fallback seed');
+        console.log('PostgreSQL: Existing P4 projects found, skipping fallback seed');
         return;
     }
 
     for (const project of savedFallbackProjects) {
         await pool.query(
             `
-                INSERT INTO projects (
+                INSERT INTO p4_projects (
                     id, title, description, category, location, completiondate,
                     clientname, images, createdat, updatedat
                 )
@@ -40,8 +41,8 @@ const seedFallbackProjectsIfEmpty = async (pool) => {
 
     await pool.query(`
         SELECT setval(
-            pg_get_serial_sequence('projects', 'id'),
-            COALESCE((SELECT MAX(id) FROM projects), 1),
+            pg_get_serial_sequence('p4_projects', 'id'),
+            COALESCE((SELECT MAX(id) FROM p4_projects), 1),
             true
         )
     `);
@@ -64,7 +65,7 @@ if (isProduction) {
 
     // Initialize PostgreSQL table
     pool.query(`
-        CREATE TABLE IF NOT EXISTS projects (
+        CREATE TABLE IF NOT EXISTS p4_projects (
             id SERIAL PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
             description TEXT,

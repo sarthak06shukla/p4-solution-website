@@ -6,6 +6,7 @@ const { authenticateToken } = require('./auth');
 const savedFallbackProjects = require('../data/projects.fallback.json');
 
 const router = express.Router();
+const PROJECTS_TABLE = process.env.NODE_ENV === 'production' ? 'p4_projects' : 'projects';
 const CLOUDINARY_FOLDER = 'p4-solution-projects';
 const CLOUDINARY_FALLBACK_ID_PREFIX = 'cloudinary-';
 
@@ -188,7 +189,7 @@ const getCloudinaryPublicIdFromUrl = (url) => {
 router.get('/', (req, res) => {
     const db = req.app.locals.db;
 
-    db.all('SELECT * FROM projects ORDER BY createdAt DESC', [], async (err, rows) => {
+    db.all(`SELECT * FROM ${PROJECTS_TABLE} ORDER BY createdAt DESC`, [], async (err, rows) => {
         if (err) {
             console.error('Project database error:', err);
 
@@ -256,7 +257,7 @@ router.get('/:id', async (req, res) => {
 
     const db = req.app.locals.db;
 
-    db.get('SELECT * FROM projects WHERE id = ?', [req.params.id], (err, row) => {
+    db.get(`SELECT * FROM ${PROJECTS_TABLE} WHERE id = ?`, [req.params.id], (err, row) => {
         if (err) {
             console.error('Project database error:', err);
             const savedProject = getSavedFallbackProject(req.params.id);
@@ -306,7 +307,7 @@ router.post('/', authenticateToken, upload.array('images', 10), async (req, res)
         const images = await Promise.all(uploadPromises);
 
         const query = `
-            INSERT INTO projects (title, description, category, location, completiondate, clientname, images)
+            INSERT INTO ${PROJECTS_TABLE} (title, description, category, location, completiondate, clientname, images)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
 
@@ -357,7 +358,7 @@ router.put('/:id', authenticateToken, upload.array('images', 10), async (req, re
         }
 
         const query = `
-            UPDATE projects 
+            UPDATE ${PROJECTS_TABLE} 
             SET title = ?, description = ?, category = ?, location = ?, 
                 completiondate = ?, clientname = ?, images = ?, updatedat = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -398,7 +399,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const db = req.app.locals.db;
 
     // Get project to delete Cloudinary images
-    db.get('SELECT images FROM projects WHERE id = ?', [req.params.id], async (err, row) => {
+    db.get(`SELECT images FROM ${PROJECTS_TABLE} WHERE id = ?`, [req.params.id], async (err, row) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
@@ -408,7 +409,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // Delete from database
-        db.run('DELETE FROM projects WHERE id = ?', [req.params.id], async function (err) {
+        db.run(`DELETE FROM ${PROJECTS_TABLE} WHERE id = ?`, [req.params.id], async function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
