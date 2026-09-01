@@ -20,13 +20,51 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Create database wrapper for consistent API
 const isProduction = process.env.NODE_ENV === 'production';
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const transientPostgresErrorCodes = new Set([
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'EPIPE',
+    'ENOTFOUND',
+    '57P01',
+    '57P02',
+    '57P03',
+    '08000',
+    '08003',
+    '08006'
+]);
+
+const isTransientPostgresError = (err) => (
+    transientPostgresErrorCodes.has(err?.code) ||
+    /connection terminated|connection ended|timeout|socket hang up/i.test(err?.message || '')
+);
+
+const queryPostgres = async (sql, params, retries = 2) => {
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+        try {
+            return await db.query(sql, params);
+        } catch (err) {
+            if (attempt === retries || !isTransientPostgresError(err)) {
+                throw err;
+            }
+
+            console.warn(`PostgreSQL query failed, retrying (${attempt + 1}/${retries}):`, err.message);
+            await delay(250 * (attempt + 1));
+        }
+    }
+
+    throw new Error('PostgreSQL query failed');
+};
+
 const dbWrapper = {
     all: (sql, params, callback) => {
         if (isProduction) {
             // PostgreSQL - convert ? to $1, $2, etc.
             let i = 0;
             const pgSql = sql.replace(/\?/g, () => `$${++i}`);
-            db.query(pgSql, params)
+            queryPostgres(pgSql, params)
                 .then(result => callback(null, result.rows))
                 .catch(err => callback(err));
         } else {
@@ -39,7 +77,7 @@ const dbWrapper = {
             // PostgreSQL - convert ? to $1, $2, etc.
             let i = 0;
             const pgSql = sql.replace(/\?/g, () => `$${++i}`);
-            db.query(pgSql, params)
+            queryPostgres(pgSql, params)
                 .then(result => callback(null, result.rows[0] || null))
                 .catch(err => callback(err));
         } else {
@@ -52,7 +90,7 @@ const dbWrapper = {
             // PostgreSQL - convert ? to $1, $2, etc.
             let i = 0;
             const pgSql = sql.replace(/\?/g, () => `$${++i}`) + ' RETURNING id';
-            db.query(pgSql, params)
+            queryPostgres(pgSql, params)
                 .then(result => {
                     callback.call(
                         { lastID: result.rows[0]?.id, changes: result.rowCount },

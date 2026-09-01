@@ -55,7 +55,11 @@ if (isProduction) {
 
     const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
+        max: 5,
+        idleTimeoutMillis: 10000,
+        connectionTimeoutMillis: 15000,
+        keepAlive: true
     });
 
     // Initialize PostgreSQL table
