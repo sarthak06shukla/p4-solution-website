@@ -21,4 +21,5 @@ If any Cloudinary credentials were ever committed to GitHub, rotate the API secr
 ## Notes
 
 - New project uploads are stored in the `p4-solution-projects` Cloudinary folder.
-- The public projects API can temporarily show the saved fallback project list from `backend/data/projects.fallback.json` if PostgreSQL is unavailable.
+- In production, project metadata is stored in Cloudinary as `p4-solution-data/projects.json` when `PROJECT_STORE=cloudinary`.
+- The public projects API can show the saved fallback project list from `backend/data/projects.fallback.json` if Cloudinary project metadata is not created yet.

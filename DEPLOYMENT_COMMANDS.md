@@ -29,6 +29,7 @@ Copy these to Render Dashboard → Backend Service → Environment:
 
 ```
 NODE_ENV=production
+PROJECT_STORE=cloudinary
 DATABASE_URL=<from-render-postgresql-dashboard>
 FRONTEND_URL=https://p4-solution-frontend.onrender.com
 JWT_SECRET=<generate-random-32-char-string>
@@ -104,8 +105,8 @@ Use this online or in terminal:
 
 ### If Portfolio Media Disappears
 1. Open `https://p4-solution-backend.onrender.com/api/projects`
-2. If it shows `getaddrinfo ENOTFOUND` or says the project database is unavailable, replace `DATABASE_URL` in Render with the active PostgreSQL internal connection string
-3. Redeploy or restart the backend service
+2. Keep `PROJECT_STORE=cloudinary` in Render so the portfolio does not depend on the shared PostgreSQL database
+3. Check Cloudinary credentials in Render if project data or uploads fail
 4. If credentials were exposed in GitHub, rotate the Cloudinary API secret and update Render
 
 ### If Database Migration Fails

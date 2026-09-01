@@ -87,6 +87,7 @@ Frontend runs on: http://localhost:3000
 ```
 NODE_ENV=development
 PORT=5000
+PROJECT_STORE=database
 JWT_SECRET=your_jwt_secret
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your_password

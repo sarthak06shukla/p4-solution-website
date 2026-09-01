@@ -11,6 +11,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PROJECT_STORE
+        value: cloudinary
       - key: DATABASE_URL
         fromDatabase:
           name: p4-solution-db

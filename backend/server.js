@@ -3,7 +3,6 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-const db = require('./config/database');
 const authRoutes = require('./routes/auth');
 const projectsRoutes = require('./routes/projects');
 const contactRoutes = require('./routes/contact');
@@ -19,6 +18,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Create database wrapper for consistent API
 const isProduction = process.env.NODE_ENV === 'production';
+const projectStore = process.env.PROJECT_STORE || (isProduction ? 'cloudinary' : 'database');
+const shouldUseDatabase = projectStore !== 'cloudinary';
+const db = shouldUseDatabase ? require('./config/database') : null;
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -42,6 +44,10 @@ const isTransientPostgresError = (err) => (
 );
 
 const queryPostgres = async (sql, params, retries = 2) => {
+    if (!db) {
+        throw new Error('Database is not configured for this project store');
+    }
+
     for (let attempt = 0; attempt <= retries; attempt += 1) {
         try {
             return await db.query(sql, params);
@@ -69,6 +75,9 @@ const dbWrapper = {
                 .catch(err => callback(err));
         } else {
             // SQLite
+            if (!db) {
+                return callback(new Error('Database is not configured for this project store'));
+            }
             db.all(sql, params, callback);
         }
     },
@@ -82,6 +91,9 @@ const dbWrapper = {
                 .catch(err => callback(err));
         } else {
             // SQLite
+            if (!db) {
+                return callback(new Error('Database is not configured for this project store'));
+            }
             db.get(sql, params, callback);
         }
     },
@@ -100,6 +112,9 @@ const dbWrapper = {
                 .catch(err => callback(err));
         } else {
             // SQLite
+            if (!db) {
+                return callback(new Error('Database is not configured for this project store'));
+            }
             db.run(sql, params, function (err) {
                 callback.call({ lastID: this.lastID, changes: this.changes }, err);
             });
@@ -139,4 +154,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Project store: ${projectStore}`);
 });
