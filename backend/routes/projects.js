@@ -124,20 +124,35 @@ const uploadToCloudinary = async (file) => {
         timeout: 300000
     };
 
-    try {
-        const result = isVideo
-            ? await cloudinary.uploader.upload_large(file.path, {
-                ...options,
-                chunk_size: 6000000
-            })
-            : await cloudinary.uploader.upload(file.path, options);
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (error) {
+                logSafeError('Cloudinary upload error:', error);
+                reject(error);
+                return;
+            }
 
-        console.log('Upload successful:', result.secure_url);
-        return result.secure_url;
-    } catch (error) {
-        logSafeError('Cloudinary upload error:', error);
-        throw error;
-    }
+            if (!result?.secure_url) {
+                reject(new Error('Cloudinary upload did not return a media URL.'));
+                return;
+            }
+
+            console.log('Upload successful:', result.secure_url);
+            resolve(result.secure_url);
+        });
+
+        uploadStream.on('error', (error) => {
+            logSafeError('Cloudinary upload stream error:', error);
+            reject(error);
+        });
+
+        fs.createReadStream(file.path)
+            .on('error', (error) => {
+                logSafeError('Temporary file read error:', error);
+                reject(error);
+            })
+            .pipe(uploadStream);
+    });
 };
 
 const hasCloudinaryConfig = () => (
@@ -174,11 +189,17 @@ const logSafeError = (label, error) => {
 
 const parseImages = (value) => {
     if (!value) return [];
-    if (Array.isArray(value)) return value;
+    if (Array.isArray(value)) {
+        return value
+            .filter(url => typeof url === 'string' && url.trim())
+            .map(url => url.trim());
+    }
 
     try {
         const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed)
+            ? parsed.filter(url => typeof url === 'string' && url.trim()).map(url => url.trim())
+            : [];
     } catch (error) {
         console.error('Invalid project images JSON:', error.message);
         return [];

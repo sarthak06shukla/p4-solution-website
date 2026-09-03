@@ -16,6 +16,14 @@ export const getMediaUrl = (url) => {
     return `${getApiOrigin()}${normalizedPath}`;
 };
 
+export const getValidMedia = (media = []) => {
+    if (!Array.isArray(media)) return [];
+
+    return media
+        .filter(url => typeof url === 'string' && url.trim())
+        .map(url => url.trim());
+};
+
 // Helper function to check if a file is a video
 export const isVideo = (filename) => {
     if (!filename) return false;
@@ -28,4 +36,19 @@ export const isVideo = (filename) => {
     const pathWithoutQuery = normalized.split('?')[0].split('#')[0];
     const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.m4v'];
     return videoExtensions.some(ext => pathWithoutQuery.endsWith(ext));
+};
+
+export const getVideoPosterUrl = (url) => {
+    const mediaUrl = getMediaUrl(url);
+
+    if (!mediaUrl || !isVideo(mediaUrl) || !mediaUrl.includes('/video/upload/')) {
+        return '';
+    }
+
+    const [urlWithoutQuery, queryString] = mediaUrl.split('?');
+    const posterPath = urlWithoutQuery
+        .replace('/video/upload/', '/video/upload/so_1,w_900,h_650,c_fill,q_auto,f_jpg/')
+        .replace(/\.[^/.]+$/, '.jpg');
+
+    return queryString ? `${posterPath}?${queryString}` : posterPath;
 };

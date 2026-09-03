@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { projectsAPI } from '../services/api';
-import { getMediaUrl, isVideo } from '../utils/mediaHelpers';
+import { getMediaUrl, getValidMedia, getVideoPosterUrl, isVideo } from '../utils/mediaHelpers';
 import './Portfolio.css';
 
 function Portfolio({ fullPage = false }) {
@@ -74,7 +74,13 @@ function Portfolio({ fullPage = false }) {
                 ) : (
                     <>
                         <div className="portfolio-grid grid grid-3">
-                            {displayedProjects.map((project, index) => (
+                            {displayedProjects.map((project, index) => {
+                                const media = getValidMedia(project.images);
+                                const primaryMedia = media[0];
+                                const primaryMediaUrl = getMediaUrl(primaryMedia);
+                                const videoPosterUrl = isVideo(primaryMedia) ? getVideoPosterUrl(primaryMedia) : '';
+
+                                return (
                                 <Link
                                     to={`/project/${project.id}`}
                                     key={project.id}
@@ -82,20 +88,31 @@ function Portfolio({ fullPage = false }) {
                                     style={{ animationDelay: `${index * 0.1}s` }}
                                 >
                                     <div className="project-image">
-                                        {project.images && project.images[0] ? (
-                                            isVideo(project.images[0]) ? (
+                                        {primaryMedia ? (
+                                            isVideo(primaryMedia) ? (
                                                 <div className="video-thumbnail-wrapper">
-                                                    <video
-                                                        src={getMediaUrl(project.images[0])}
-                                                        className="video-thumbnail"
-                                                    />
+                                                    {videoPosterUrl ? (
+                                                        <img
+                                                            src={videoPosterUrl}
+                                                            alt={`${project.title} video preview`}
+                                                            className="video-thumbnail"
+                                                        />
+                                                    ) : (
+                                                        <video
+                                                            src={primaryMediaUrl}
+                                                            className="video-thumbnail"
+                                                            preload="metadata"
+                                                            muted
+                                                            playsInline
+                                                        />
+                                                    )}
                                                     <div className="video-play-overlay">
                                                         <div className="play-button">▶</div>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <img
-                                                    src={getMediaUrl(project.images[0])}
+                                                    src={primaryMediaUrl}
                                                     alt={project.title}
                                                 />
                                             )
@@ -122,7 +139,8 @@ function Portfolio({ fullPage = false }) {
                                         </p>
                                     </div>
                                 </Link>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* View All Button - Only show on homepage when there are more than 4 projects */}

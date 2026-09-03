@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../services/api';
-import { getMediaUrl, isVideo } from '../utils/mediaHelpers';
+import { getMediaUrl, getValidMedia, getVideoPosterUrl, isVideo } from '../utils/mediaHelpers';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -101,16 +101,34 @@ function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {projects.map(project => (
+                                {projects.map(project => {
+                                    const media = getValidMedia(project.images);
+                                    const primaryMedia = media[0];
+                                    const primaryMediaUrl = getMediaUrl(primaryMedia);
+                                    const videoPosterUrl = isVideo(primaryMedia) ? getVideoPosterUrl(primaryMedia) : '';
+
+                                    return (
                                     <tr key={project.id}>
                                         <td>
                                             <div className="table-image">
-                                                {project.images && project.images[0] ? (
-                                                    isVideo(project.images[0]) ? (
-                                                        <video src={getMediaUrl(project.images[0])} muted />
+                                                {primaryMedia ? (
+                                                    isVideo(primaryMedia) ? (
+                                                        videoPosterUrl ? (
+                                                            <img
+                                                                src={videoPosterUrl}
+                                                                alt={`${project.title} video preview`}
+                                                            />
+                                                        ) : (
+                                                            <video
+                                                                src={primaryMediaUrl}
+                                                                preload="metadata"
+                                                                muted
+                                                                playsInline
+                                                            />
+                                                        )
                                                     ) : (
                                                         <img
-                                                            src={getMediaUrl(project.images[0])}
+                                                            src={primaryMediaUrl}
                                                             alt={project.title}
                                                         />
                                                     )
@@ -146,7 +164,8 @@ function Dashboard() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

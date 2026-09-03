@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../services/api';
-import { getMediaUrl, isVideo } from '../utils/mediaHelpers';
+import { getMediaUrl, getValidMedia, getVideoPosterUrl, isVideo } from '../utils/mediaHelpers';
 import './ProjectDetail.css';
 
 function ProjectDetail() {
@@ -12,11 +12,7 @@ function ProjectDetail() {
     const [selectedMedia, setSelectedMedia] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
 
-    useEffect(() => {
-        fetchProject();
-    }, [id]);
-
-    const fetchProject = async () => {
+    const fetchProject = useCallback(async () => {
         try {
             const response = await projectsAPI.getOne(id);
             setProject(response.data);
@@ -25,7 +21,11 @@ function ProjectDetail() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        fetchProject();
+    }, [fetchProject]);
 
     if (loading) {
         return (
@@ -46,7 +46,11 @@ function ProjectDetail() {
         );
     }
 
-    const currentMediaIsVideo = project.images && project.images.length > 0 && isVideo(project.images[selectedMedia]);
+    const media = getValidMedia(project.images);
+    const activeMedia = media[selectedMedia] || media[0];
+    const activeMediaUrl = getMediaUrl(activeMedia);
+    const currentMediaIsVideo = isVideo(activeMedia);
+    const activeVideoPosterUrl = currentMediaIsVideo ? getVideoPosterUrl(activeMedia) : '';
 
     return (
         <div className="project-detail">
@@ -72,7 +76,7 @@ function ProjectDetail() {
 
             <div className="container section">
                 {/* Main Media Gallery */}
-                {project.images && project.images.length > 0 && (
+                {media.length > 0 && (
                     <div className="image-gallery mb-xl fade-in">
                         <div
                             className="main-image"
@@ -82,9 +86,13 @@ function ProjectDetail() {
                                 <>
                                     <video
                                         className="project-video"
+                                        poster={activeVideoPosterUrl || undefined}
+                                        preload="metadata"
+                                        muted
+                                        playsInline
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        <source src={getMediaUrl(project.images[selectedMedia])} type="video/mp4" />
+                                        <source src={activeMediaUrl} type="video/mp4" />
                                         Your browser does not support the video tag.
                                     </video>
                                     <div className="image-overlay">
@@ -94,7 +102,7 @@ function ProjectDetail() {
                             ) : (
                                 <>
                                     <img
-                                        src={getMediaUrl(project.images[selectedMedia])}
+                                        src={activeMediaUrl}
                                         alt={`${project.title} - ${selectedMedia + 1}`}
                                     />
                                     <div className="image-overlay">
@@ -104,27 +112,44 @@ function ProjectDetail() {
                             )}
                         </div>
 
-                        {project.images.length > 1 && (
+                        {media.length > 1 && (
                             <div className="image-thumbnails">
-                                {project.images.map((media, index) => (
+                                {media.map((mediaItem, index) => {
+                                    const mediaUrl = getMediaUrl(mediaItem);
+                                    const posterUrl = isVideo(mediaItem) ? getVideoPosterUrl(mediaItem) : '';
+
+                                    return (
                                     <div
                                         key={index}
                                         className={`thumbnail ${selectedMedia === index ? 'active' : ''}`}
                                         onClick={() => setSelectedMedia(index)}
                                     >
-                                        {isVideo(media) ? (
+                                        {isVideo(mediaItem) ? (
                                             <div className="video-thumbnail">
-                                                <video src={getMediaUrl(media)} />
+                                                {posterUrl ? (
+                                                    <img
+                                                        src={posterUrl}
+                                                        alt={`Video thumbnail ${index + 1}`}
+                                                    />
+                                                ) : (
+                                                    <video
+                                                        src={mediaUrl}
+                                                        preload="metadata"
+                                                        muted
+                                                        playsInline
+                                                    />
+                                                )}
                                                 <div className="play-icon">▶</div>
                                             </div>
                                         ) : (
                                             <img
-                                                src={getMediaUrl(media)}
+                                                src={mediaUrl}
                                                 alt={`Thumbnail ${index + 1}`}
                                             />
                                         )}
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -151,27 +176,28 @@ function ProjectDetail() {
                             controls
                             autoPlay
                             className="lightbox-video"
+                            poster={activeVideoPosterUrl || undefined}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <source src={getMediaUrl(project.images[selectedMedia])} type="video/mp4" />
+                            <source src={activeMediaUrl} type="video/mp4" />
                             Your browser does not support the video tag.
                         </video>
                     ) : (
                         <img
-                            src={getMediaUrl(project.images[selectedMedia])}
+                            src={activeMediaUrl}
                             alt={project.title}
                             onClick={(e) => e.stopPropagation()}
                         />
                     )}
 
-                    {project.images.length > 1 && (
+                    {media.length > 1 && (
                         <>
                             <button
                                 className="lightbox-nav prev"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedMedia((prev) =>
-                                        prev === 0 ? project.images.length - 1 : prev - 1
+                                        prev === 0 ? media.length - 1 : prev - 1
                                     );
                                 }}
                             >
@@ -182,7 +208,7 @@ function ProjectDetail() {
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedMedia((prev) =>
-                                        prev === project.images.length - 1 ? 0 : prev + 1
+                                        prev === media.length - 1 ? 0 : prev + 1
                                     );
                                 }}
                             >
